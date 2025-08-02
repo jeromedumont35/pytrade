@@ -26,11 +26,11 @@ def _apply_indicators(df):
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("Le DataFrame doit avoir un index temporel (datetime).")
 
-    df = CRSICalculator.RSICalculator(df,period=14,close_times=[(23, 59)],name="rsi_1d_14").get_df()
+    #df = CRSICalculator.RSICalculator(df,period=14,close_times=[(23, 59)],name="rsi_1d_14").get_df()
 
     df = CRSICalculator.RSICalculator(df, period=14,
                                    close_times=[(3, 59), (7, 59), (11, 59), (15, 59), (19, 59), (23, 59)],
-                                   name="rsi_4h_14_V2").get_df()
+                                   name="rsi_4h_14").get_df()
 
     close_times_1h = [(h, 59) for h in range(24)]
     df = CRSICalculator.RSICalculator(df, period=14, close_times=close_times_1h, name="rsi_1h_14").get_df()
@@ -47,7 +47,7 @@ def _apply_indicators(df):
 
     # === Détection et filtrage des hammers sur bougies 5 minutes ===
 
-    df_5min = df.resample("5T").agg({
+    df_5min = df.resample("5min").agg({
         "open": "first",
         "high": "max",
         "low": "min",
