@@ -1,6 +1,9 @@
 import pandas as pd
 from tqdm import tqdm
 
+from strategies.CStrat_4h_HA import CStrat_4h_HA
+from strategies.CStrat_RSI30 import CStrat_RSI30
+
 
 class CTradingAlgo:
     def __init__(self, l_interface_trade, risk_per_trade_pct: float = 0.1, strategy_name: str = "strategy_1"):
@@ -8,12 +11,18 @@ class CTradingAlgo:
         self.risk_per_trade_pct = risk_per_trade_pct
         self.strategy_name = strategy_name
         self.stop_loss_ratio = 0.98
-        self.rsi_tp_long = 65
-        self.rsi_tp_short = 40
 
         self.open_positions = []
         self.closed_count = 0
         self.total_trades = 0
+
+        # Dynamically instantiate the strategy class
+        if self.strategy_name == "4h_HA":
+            self.strategy = CStrat_4h_HA(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
+        elif self.strategy_name == "rsi_30":
+            self.strategy = CStrat_RSI30(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
+        else:
+            raise ValueError(f"Stratégie inconnue : {self.strategy_name}")
 
     def run(self, list_data: list):
         merged = []
@@ -28,90 +37,30 @@ class CTradingAlgo:
         for timestamp, group in tqdm(grouped, total=total_ticks, desc="🔄 Simulation trading"):
             for _, row in group.iterrows():
                 symbol = row["symbol"]
-                buy_long_signal = False
-                sell_short_signal = False
-
                 df = next(df for df, s in list_data if s == symbol)
                 if timestamp not in df.index:
                     continue
-                i = df.index.get_loc(timestamp)
-                if i == 0:
-                    continue
-                prev = df.iloc[i - 1]
 
-                # === STRATEGY LOGIC ===
-                if self.strategy_name == "short_max":
-                    sell_short_signal = row["close"] > 105000
-
-                elif self.strategy_name == "rsi_30":
-                    x = 50
-                    if i >= x:
-                        rsi_window = df["rsi_4h_14"].iloc[i - x:i]
-                        current_rsi = row["rsi_4h_14"]
-                        if current_rsi > 30 and (rsi_window < 30).all():
-                            buy_long_signal = True
-                        if current_rsi < 70 and (rsi_window > 70).all():
-                            sell_short_signal = True
-
-                elif self.strategy_name == "4h_HA":
-                    if i >= 240 * 4:
-                        current_close = df["close_4h_HA"].iloc[i]
-                        past = [df["close_4h_HA"].iloc[i - 240 * j] for j in range(1, 5)]
-
-                        open_pos = next((p for p in self.open_positions if p["symbol"] == symbol), None)
-                        can_reverse = True
-                        if open_pos:
-                            minutes_open = (timestamp - open_pos["opened_on"]).total_seconds() / 60
-                            if minutes_open < 60 * 4:  # 240 min = 4h
-                                can_reverse = False
-
-                        if can_reverse and open_pos:
-                            if open_pos["side"] == "SHORT" and current_close > past[0]:
-                                exit_price = row["close"]
-                                self._close_position(open_pos, exit_price, symbol, timestamp, "BUY_SHORT", "REVERSAL_HA")
-                                continue
-                            elif open_pos["side"] == "LONG" and current_close < past[0]:
-                                exit_price = row["close"]
-                                self._close_position(open_pos, exit_price, symbol, timestamp, "SELL_LONG", "REVERSAL_HA")
-                                continue
-
-                        if not open_pos:
-                            if current_close > past[0] < past[1] < past[2] < past[3] and row["rsi_4h_14"] < 30:
-                                if self.interface_trade.get_available_usdc() > 10:
-                                    close = row["close"]
-                                    sl_price = close * self.stop_loss_ratio
-                                    montant_trade = self.interface_trade.get_available_usdc() * self.risk_per_trade_pct
-
-                                    self._open_position(
-                                        symbol=symbol,
-                                        price=close,
-                                        sl=sl_price,
-                                        timestamp=timestamp,
-                                        side="LONG",
-                                        usdc=montant_trade
-                                    )
-                                    continue
-                            elif current_close < past[0] > past[1] > past[2] > past[3] and row["rsi_4h_14"] > 70:
-                                if self.interface_trade.get_available_usdc() > 10:
-                                    close = row["close"]
-                                    sl_price = close * (2 - self.stop_loss_ratio)
-                                    montant_trade = self.interface_trade.get_available_usdc() * self.risk_per_trade_pct
-
-                                    self._open_position(
-                                        symbol=symbol,
-                                        price=close,
-                                        sl=sl_price,
-                                        timestamp=timestamp,
-                                        side="SHORT",
-                                        usdc=montant_trade
-                                    )
-                                    continue
-
-                else:
-                    raise ValueError(f"Stratégie inconnue : {self.strategy_name}")
-
-            # 💬 Affichage de la progression
-            #print(f"[{timestamp}] Open: {len(self.open_positions)} / Closed: {self.closed_count} / Capital: {self.interface_trade.get_available_usdc():.2f} USDC", end='\r')
+                actions = self.strategy.apply(df, symbol, row, timestamp, self.open_positions)
+                for action in actions:
+                    if action["action"] == "OPEN":
+                        self._open_position(
+                            symbol=action["symbol"],
+                            price=action["price"],
+                            sl=action["sl"],
+                            timestamp=timestamp,
+                            side=action["side"],
+                            usdc=action["usdc"]
+                        )
+                    elif action["action"] == "CLOSE":
+                        self._close_position(
+                            pos=action["position"],
+                            exit_price=action["exit_price"],
+                            symbol=action["symbol"],
+                            timestamp=timestamp,
+                            exit_side=action["exit_side"],
+                            reason=action["reason"]
+                        )
 
     def _open_position(self, symbol, price, sl, timestamp, side, usdc):
         self.open_positions.append({
