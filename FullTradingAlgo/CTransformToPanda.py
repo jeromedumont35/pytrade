@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import talib
 import CRSICalculator
+import CJapanesePatternDetector
 
 RAW_DIR = "raw"
 PANDA_DIR = "panda"
@@ -45,50 +46,13 @@ def _apply_indicators(df):
 
     df['close_4h_HA'] = (open_4h + high_4h + low_4h + close_4h) / 4
 
-    # === Détection et filtrage des hammers sur bougies 5 minutes ===
-
-    df_5min = df.resample("5min").agg({
-        "open": "first",
-        "high": "max",
-        "low": "min",
-        "close": "last",
-        "volume": "sum"
-    }).dropna()
-
-    hammer = talib.CDLHAMMER(df_5min["open"], df_5min["high"], df_5min["low"], df_5min["close"])
-    inv_hammer = talib.CDLINVERTEDHAMMER(df_5min["open"], df_5min["high"], df_5min["low"], df_5min["close"])
-
-    df_5min["hammer_signal"] = 0
-    df_5min.loc[hammer != 0, "hammer_signal"] = 1
-    df_5min.loc[inv_hammer != 0, "hammer_signal"] = -1
-
-    def filter_hammers_by_pct(df_5min, signal_col="hammer_signal", pct=0.5):
-        """
-        Filtre les hammers selon un seuil en % entre close et low/high.
-        pct : float en %, ex: 0.3 = 0.3%
-        """
-        df = df_5min.copy()
-        df["hammer_filtered"] = 0
-        seuil = pct / 100.0
-
-        for idx, row in df.iterrows():
-            signal = row[signal_col]
-            if signal == 1:  # Hammer haussier
-                if row["low"] > 0 and (row["close"] - row["low"]) / row["low"] >= seuil:
-                    df.at[idx, "hammer_filtered"] = 1
-            elif signal == -1:  # Inverted hammer
-                if row["close"] > 0 and (row["high"] - row["close"]) / row["close"] >= seuil:
-                    df.at[idx, "hammer_filtered"] = -1
-
-        return df["hammer_filtered"]
-
-    df_5min["hammer_filtered"] = filter_hammers_by_pct(df_5min, "hammer_signal", pct=0.3)
-
-    # Remettre dans df 1min la variable jap_hammers_5m : 1, -1 ou 0
-    df["jap_hammers_5m"] = 0
-    for ts, signal in df_5min["hammer_filtered"].items():
-        # Plage de 5 minutes
-        df.loc[ts: ts + pd.Timedelta(minutes=4), "jap_hammers_5m"] = signal
+    detector = CJapanesePatternDetector.CJapanesePatternDetector(
+        pattern_name="CDLHAMMER",
+        timeframe="5min",
+        pct_threshold=0.3,
+        output_col_name="jap_hammer_5m_V2"
+    )
+    df = detector.detect_and_filter(df)
 
     return df
 
