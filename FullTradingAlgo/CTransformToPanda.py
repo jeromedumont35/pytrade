@@ -19,7 +19,8 @@ class CTransformToPanda:
         df["time"] = pd.to_datetime(df["time"], unit="ms")
         df.set_index("time", inplace=True)
         df[["open", "high", "low", "close", "volume"]] = df[["open", "high", "low", "close", "volume"]].astype(float)
-        return df[["open", "high", "low", "close", "volume"]]
+        df["moy_l_h_e_c"] = (df["open"] + df["close"] + df["high"] + df["low"]) / 4
+        return df[["open", "high", "low", "close", "volume", "moy_l_h_e_c"]]
 
     def process_all(self, apply_indicators_func):
         raw_files = [f for f in os.listdir(self.raw_dir) if f.endswith(".raw")]

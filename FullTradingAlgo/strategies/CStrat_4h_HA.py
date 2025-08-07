@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import CRSICalculator
 import CTransformToPanda
 import CIndicatorsBTCAdder
+import CJapanesePatternDetector
 
 class CStrat_4h_HA:
     def __init__(self, interface_trade=None, risk_per_trade_pct: float = 0.1, stop_loss_ratio: float = 0.98):
@@ -101,6 +102,14 @@ class CStrat_4h_HA:
         close_4h = df['close'].rolling(window=window).apply(lambda x: x.iloc[-1], raw=False)
 
         df['close_4h_HA'] = (open_4h + high_4h + low_4h + close_4h) / 4
+
+        detector = CJapanesePatternDetector.CJapanesePatternDetector(
+            pattern_name="CDLMORNINGSTAR",
+            timeframe="5min",
+            pct_threshold=0.3,
+            output_col_name="jap_hammer_5m"
+        )
+        df = detector.detect_and_filter(df)
 
         if not is_btc_file:
             adder = CIndicatorsBTCAdder.CIndicatorsBTCAdder(btc_dir="../panda")

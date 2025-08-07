@@ -32,6 +32,6 @@ class CIndicatorsBTCAdder:
 
             # Aligner sur les index temporels
             aligned = self.btc_df[col].reindex(target_df.index)
-            target_df[f"{col}_BTC"] = aligned
+            target_df[f"BTC_{col}"] = aligned
 
         return target_df

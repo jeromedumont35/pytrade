@@ -25,7 +25,7 @@ class PandaViewerApp:
         self.frame_plot.pack(side="top", fill="both", expand=True)
 
         # Figure avec 3 axes : prix, RSI, hammers
-        self.fig, (self.ax_main, self.ax_rsi, self.ax_hammers) = plt.subplots(
+        self.fig, (self.ax_p1, self.ax_p2, self.ax_p3) = plt.subplots(
             3, 1, figsize=(10, 9), gridspec_kw={'height_ratios': [3, 1, 0.7]}, sharex=True)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame_plot)
@@ -48,61 +48,66 @@ class PandaViewerApp:
         with open(filepath, "rb") as f:
             df = pickle.load(f)
 
-        self.ax_main.clear()
-        self.ax_rsi.clear()
-        self.ax_hammers.clear()
+        self.ax_p1.clear()
+        self.ax_p2.clear()
+        self.ax_p3.clear()
 
-        # Tracer close
-        self.ax_main.plot(df.index, df["close"], label="Close", color="blue", linewidth=1)
-        #self.ax_main.plot(df.index, df["close_4h_HA"], label="Close_4H_HA", color="red", linewidth=1)
+        # Définir les codes couleurs abrégés valides
+        valid_colors = {'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w'}
 
-        # Tracer high et low en étoiles (red/noir)
-        self.ax_main.scatter(df.index, df["high"], marker="*", color="red", label="High *", s=40)
-        self.ax_main.scatter(df.index, df["low"], marker="*", color="black", label="Low *", s=40)
+        # Chercher les colonnes se terminant par __x_P3 ou *_x_P3
+        P1_cols = [col for col in df.columns if col.endswith("_P1")]
 
-        # Toutes colonnes EMA
-        ema_cols = [col for col in df.columns if re.match(r"ema\d+", col, re.IGNORECASE)]
-        colors_ema = ['orange', 'green', 'magenta', 'cyan', 'purple', 'brown']
-        for i, col in enumerate(sorted(ema_cols)):
-            self.ax_main.plot(df.index, df[col], label=col.upper(), color=colors_ema[i % len(colors_ema)], linewidth=1)
+        for col in P1_cols:
+            # Vérifie si c'est une ligne ou un scatter
+            if col[-5] == '_' and col[-6] == '_':  # "__x_P1"
+                color_code = col[-4]
+                if color_code in valid_colors:
+                    self.ax_p1.plot(df.index, df[col], label=col, color=color_code, linewidth=1)
 
-        self.ax_main.set_title(f"📈 Données : {selected_file}")
-        self.ax_main.set_ylabel("Prix")
-        self.ax_main.legend()
-        self.ax_main.grid(True)
+            elif col[-5] == '_' and col[-6] == '*':  # "*_x_P3"
+                color_code = col[-4]
+                if color_code in valid_colors:
+                    self.ax_p1.scatter(df.index, df[col], marker="*", color=color_code, label=col, s=40)
+
+        self.ax_p1.set_title(f"📈 Données : {selected_file}")
+        self.ax_p1.set_ylabel("Prix")
+        self.ax_p1.legend()
+        self.ax_p1.grid(True)
 
         # RSI subplot
         rsi_cols = [col for col in df.columns if "rsi" in col.lower()]
         colors_rsi = ['purple', 'blue', 'green', 'magenta', 'brown', 'cyan']
         if rsi_cols:
             for i, col in enumerate(sorted(rsi_cols)):
-                self.ax_rsi.plot(df.index, df[col], label=col.upper(), color=colors_rsi[i % len(colors_rsi)])
-            self.ax_rsi.axhline(70, color='red', linestyle='--', linewidth=0.8)
-            self.ax_rsi.axhline(30, color='green', linestyle='--', linewidth=0.8)
-            self.ax_rsi.set_ylabel("RSI")
-            self.ax_rsi.set_xlabel("Temps")
-            self.ax_rsi.set_ylim(0, 100)  # Fixe l'axe Y entre 0 et 40
-            self.ax_rsi.legend()
-            self.ax_rsi.grid(True)
+                self.ax_p2.plot(df.index, df[col], label=col.upper(), color=colors_rsi[i % len(colors_rsi)])
+            self.ax_p2.axhline(70, color='red', linestyle='--', linewidth=0.8)
+            self.ax_p2.axhline(30, color='green', linestyle='--', linewidth=0.8)
+            self.ax_p2.set_ylabel("RSI")
+            self.ax_p2.set_xlabel("Temps")
+            self.ax_p2.set_ylim(0, 100)  # Fixe l'axe Y entre 0 et 40
+            self.ax_p2.legend()
+            self.ax_p2.grid(True)
         else:
-            self.ax_rsi.text(0.5, 0.5, "Pas de RSI disponible", ha='center', va='center',
-                             transform=self.ax_rsi.transAxes)
-            self.ax_rsi.set_xticks([])
-            self.ax_rsi.set_yticks([])
+            self.ax_p2.text(0.5, 0.5, "Pas de RSI disponible", ha='center', va='center',
+                            transform=self.ax_p2.transAxes)
+            self.ax_p2.set_xticks([])
+            self.ax_p2.set_yticks([])
 
         # Hammers subplot
-        if "jap_hammers_5m" in df.columns:
-            colors = df["jap_hammers_5m"].map({1: "green", -1: "red", 0: "gray"})
-            self.ax_hammers.scatter(df.index, df["jap_hammers_5m"], c=colors, label="Hammers 5m", s=10)
-            self.ax_hammers.set_ylabel("Hammers")
-            self.ax_hammers.set_yticks([-1, 0, 1])
-            self.ax_hammers.grid(True)
-            self.ax_hammers.legend()
+        P3_cols = [col for col in df.columns if "_P3" in col]
+        if P3_cols:
+            for col in P3_cols:
+                self.ax_p3.scatter(df.index, df[col], label=col.upper(), s=10)
+            self.ax_p3.set_ylabel("detection")
+            self.ax_p3.set_yticks([-1, 0, 1])
+            self.ax_p3.grid(True)
+            self.ax_p3.legend()
         else:
-            self.ax_hammers.text(0.5, 0.5, "Pas de Hammers", ha='center', va='center',
-                                 transform=self.ax_hammers.transAxes)
-            self.ax_hammers.set_xticks([])
-            self.ax_hammers.set_yticks([])
+            self.ax_p3.text(0.5, 0.5, "Pas de Hammers", ha='center', va='center',
+                            transform=self.ax_p3.transAxes)
+            self.ax_p3.set_xticks([])
+            self.ax_p3.set_yticks([])
 
         self.fig.tight_layout()
         self.canvas.draw()
