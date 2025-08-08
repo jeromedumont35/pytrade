@@ -52,30 +52,49 @@ class PandaViewerApp:
         self.ax_p2.clear()
         self.ax_p3.clear()
 
+        # Axe secondaire pour BTC_
+        self.ax_p1_btc = self.ax_p1.twinx()
+
         # Définir les codes couleurs abrégés valides
         valid_colors = {'b', 'g', 'r', 'c', 'm', 'y', 'k', 'w'}
 
-        # Chercher les colonnes se terminant par __x_P3 ou *_x_P3
-        P1_cols = [col for col in df.columns if col.endswith("_P1")]
+        # --- AXE GAUCHE (classique) ---
+        P1_cols = [col for col in df.columns if col.endswith("_P1") and not col.startswith("BTC_")]
 
         for col in P1_cols:
-            # Vérifie si c'est une ligne ou un scatter
             if col[-5] == '_' and col[-6] == '_':  # "__x_P1"
                 color_code = col[-4]
                 if color_code in valid_colors:
                     self.ax_p1.plot(df.index, df[col], label=col, color=color_code, linewidth=1)
-
-            elif col[-5] == '_' and col[-6] == '*':  # "*_x_P3"
+            elif col[-5] == '_' and col[-6] == '*':  # "*_x_P1"
                 color_code = col[-4]
                 if color_code in valid_colors:
                     self.ax_p1.scatter(df.index, df[col], marker="*", color=color_code, label=col, s=40)
 
-        self.ax_p1.set_title(f"📈 Données : {selected_file}")
         self.ax_p1.set_ylabel("Prix")
-        self.ax_p1.legend()
+        self.ax_p1.legend(loc="upper left")
         self.ax_p1.grid(True)
 
-        # RSI subplot
+        # --- AXE DROIT (BTC_) ---
+        P1_btc_cols = [col for col in df.columns if col.startswith("BTC_") and col.endswith("_P1")]
+
+        for col in P1_btc_cols:
+            if col[-5] == '_' and col[-6] == '_':  # "__x_P1"
+                color_code = col[-4]
+                if color_code in valid_colors:
+                    self.ax_p1_btc.plot(df.index, df[col], label=col, color=color_code, linewidth=1, linestyle="--")
+            elif col[-5] == '_' and col[-6] == '*':  # "*_x_P1"
+                color_code = col[-4]
+                if color_code in valid_colors:
+                    self.ax_p1_btc.scatter(df.index, df[col], marker="*", color=color_code, label=col, s=40)
+
+        self.ax_p1_btc.set_ylabel("Prix BTC")
+        self.ax_p1_btc.legend(loc="upper right")
+
+        # Titre de l'axe principal
+        self.ax_p1.set_title(f"📈 Données : {selected_file}")
+
+        # --- RSI subplot ---
         rsi_cols = [col for col in df.columns if "rsi" in col.lower()]
         colors_rsi = ['purple', 'blue', 'green', 'magenta', 'brown', 'cyan']
         if rsi_cols:
@@ -85,7 +104,7 @@ class PandaViewerApp:
             self.ax_p2.axhline(30, color='green', linestyle='--', linewidth=0.8)
             self.ax_p2.set_ylabel("RSI")
             self.ax_p2.set_xlabel("Temps")
-            self.ax_p2.set_ylim(0, 100)  # Fixe l'axe Y entre 0 et 40
+            self.ax_p2.set_ylim(0, 100)
             self.ax_p2.legend()
             self.ax_p2.grid(True)
         else:
@@ -94,7 +113,7 @@ class PandaViewerApp:
             self.ax_p2.set_xticks([])
             self.ax_p2.set_yticks([])
 
-        # Hammers subplot
+        # --- Hammers subplot ---
         P3_cols = [col for col in df.columns if "_P3" in col]
         if P3_cols:
             for col in P3_cols:

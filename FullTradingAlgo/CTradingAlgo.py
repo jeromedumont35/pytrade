@@ -1,8 +1,8 @@
 import pandas as pd
 from tqdm import tqdm
 
-from strategies.CStrat_4h_HA import CStrat_4h_HA
-from strategies.CStrat_RSI30 import CStrat_RSI30
+#from strategies.CStrat_4h_HA import CStrat_4h_HA
+from strategies.CStrat_RSI5min30 import CStrat_RSI5min30
 
 
 class CTradingAlgo:
@@ -21,6 +21,8 @@ class CTradingAlgo:
             self.strategy = CStrat_4h_HA(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
         elif self.strategy_name == "rsi_30":
             self.strategy = CStrat_RSI30(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
+        elif self.strategy_name == "RSI5min30":
+            self.strategy = CStrat_RSI5min30(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
         else:
             raise ValueError(f"Stratégie inconnue : {self.strategy_name}")
 
