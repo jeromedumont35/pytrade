@@ -7,7 +7,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 import pandas as pd
 import re
 
-PANDA_DIR = "panda"
+PANDA_DIR = "panda_results"
 
 class PandaViewerApp:
     def __init__(self, root):
@@ -66,10 +66,10 @@ class PandaViewerApp:
                 color_code = col[-4]
                 if color_code in valid_colors:
                     self.ax_p1.plot(df.index, df[col], label=col, color=color_code, linewidth=1)
-            elif col[-5] == '_' and col[-6] == '*':  # "*_x_P1"
+            else :
                 color_code = col[-4]
                 if color_code in valid_colors:
-                    self.ax_p1.scatter(df.index, df[col], marker="*", color=color_code, label=col, s=40)
+                    self.ax_p1.scatter(df.index, df[col], marker=col[-6], color=color_code, label=col, s=40)
 
         self.ax_p1.set_ylabel("Prix")
         self.ax_p1.legend(loc="upper left")
@@ -95,7 +95,7 @@ class PandaViewerApp:
         self.ax_p1.set_title(f"📈 Données : {selected_file}")
 
         # --- RSI subplot ---
-        rsi_cols = [col for col in df.columns if "rsi" in col.lower()]
+        rsi_cols = [col for col in df.columns if "_P2" in col]
         colors_rsi = ['purple', 'blue', 'green', 'magenta', 'brown', 'cyan']
         if rsi_cols:
             for i, col in enumerate(sorted(rsi_cols)):

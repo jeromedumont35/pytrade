@@ -1,7 +1,8 @@
+import os
 import pandas as pd
 from tqdm import tqdm
 
-#from strategies.CStrat_4h_HA import CStrat_4h_HA
+# from strategies.CStrat_4h_HA import CStrat_4h_HA
 from strategies.CStrat_RSI5min30 import CStrat_RSI5min30
 
 
@@ -16,13 +17,16 @@ class CTradingAlgo:
         self.closed_count = 0
         self.total_trades = 0
 
+        # Stockage des DataFrames par symbol
+        self.symbol_dfs = {}
+
         # Dynamically instantiate the strategy class
         if self.strategy_name == "4h_HA":
             self.strategy = CStrat_4h_HA(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
         elif self.strategy_name == "rsi_30":
             self.strategy = CStrat_RSI30(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
         elif self.strategy_name == "RSI5min30":
-            self.strategy = CStrat_RSI5min30(self.interface_trade, self.risk_per_trade_pct, self.stop_loss_ratio)
+            self.strategy = CStrat_RSI5min30(self.interface_trade, self.risk_per_trade_pct)
         else:
             raise ValueError(f"Stratégie inconnue : {self.strategy_name}")
 
@@ -31,7 +35,12 @@ class CTradingAlgo:
         for df, symbol in list_data:
             df = df.copy()
             df["symbol"] = symbol
+            # Ajout des colonnes vides
+            df["entry_price_*_g_P1"] = None
+            df["exit_price_*_r_P1"] = None
+            self.symbol_dfs[symbol] = df
             merged.append(df)
+
         full_df = pd.concat(merged).sort_index()
         grouped = full_df.groupby(full_df.index)
         total_ticks = len(grouped)
@@ -39,7 +48,7 @@ class CTradingAlgo:
         for timestamp, group in tqdm(grouped, total=total_ticks, desc="🔄 Simulation trading"):
             for _, row in group.iterrows():
                 symbol = row["symbol"]
-                df = next(df for df, s in list_data if s == symbol)
+                df = self.symbol_dfs[symbol]
                 if timestamp not in df.index:
                     continue
 
@@ -54,6 +63,9 @@ class CTradingAlgo:
                             side=action["side"],
                             usdc=action["usdc"]
                         )
+                        # On écrit dans la colonne entry_price
+                        df.loc[timestamp, "entry_price_*_g_P1"] = action["price"]
+
                     elif action["action"] == "CLOSE":
                         self._close_position(
                             pos=action["position"],
@@ -63,6 +75,18 @@ class CTradingAlgo:
                             exit_side=action["exit_side"],
                             reason=action["reason"]
                         )
+                        # On écrit dans la colonne exit_price
+                        df.loc[timestamp, "exit_price_*_r_P1"] = action["exit_price"]
+
+                    elif action["action"] == "M1":
+                        # On écrit dans la colonne entry_price
+                        df.loc[timestamp, "entry_price_^_g_P1"] = action["price"]
+                    elif action["action"] == "M2":
+                        # On écrit dans la colonne entry_price
+                        df.loc[timestamp, "entry_price_v_g_P1"] = action["price"]
+
+        # Sauvegarde des df par pièce
+        self._save_results()
 
     def _open_position(self, symbol, price, sl, timestamp, side, usdc):
         self.open_positions.append({
@@ -97,3 +121,10 @@ class CTradingAlgo:
         self.closed_count += 1
         self.total_trades += 1
         self.open_positions.remove(pos)
+
+    def _save_results(self):
+        os.makedirs("./panda_results", exist_ok=True)
+        for symbol, df in self.symbol_dfs.items():
+            path = f"./panda_results/{symbol}.panda"
+            df.to_pickle(path)
+            print(f"✅ Sauvegarde effectuée : {path}")
