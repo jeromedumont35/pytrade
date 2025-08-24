@@ -47,7 +47,7 @@ class RSICalculator:
             right_index=True
         )
 
-        # 6. Interpolation minute par minute
+        # 6. Interpolation minute par minute avec trace NaN
         gain_filled = []
         loss_filled = []
         rsi_filled = []
@@ -69,7 +69,6 @@ class RSICalculator:
                 last_price = df.at[idx, 'close']
                 rsi = df.at[idx, self.name]
             elif last_idx is not None:
-                # Trouver le prochain point avec RSI non-NaN
                 if next_idx is None or idx >= next_idx:
                     future = df.loc[idx:].dropna(subset=[f'avg_gain_{self.name}'])
                     if not future.empty:
@@ -98,12 +97,14 @@ class RSICalculator:
             else:
                 rsi = None
 
+            # ⚠️ Trace si RSI est NaN
+            if rsi is None or pd.isna(rsi):
+                print(f"[TRACE] RSI NaN à l’index {idx}")
+
             gain_filled.append(last_gain if last_gain is not None else None)
             loss_filled.append(last_loss if last_loss is not None else None)
             rsi_filled.append(rsi)
 
-        #df[f'avg_gain_{self.name}'] = gain_filled
-        #df[f'avg_loss_{self.name}'] = loss_filled
         df[self.name] = rsi_filled
 
         self.df = df.drop(columns=['is_custom_close'])

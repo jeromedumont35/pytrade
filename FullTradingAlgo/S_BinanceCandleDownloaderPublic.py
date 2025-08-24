@@ -46,11 +46,17 @@ class BinanceCandleDownloaderPublic:
 
     def download_and_save(self, symbol: str, start_time: datetime, end_time: datetime):
         symbol = symbol.upper()
+        filename = self._get_filename(symbol, start_time, end_time)
+
+        # Vérifie si le fichier existe déjà
+        if os.path.exists(filename):
+            print(f"ℹ️ Le fichier existe déjà : {filename}. Téléchargement ignoré.")
+            return
+
         current_time = start_time
         limit = 1000
         all_candles = []
 
-        filename = self._get_filename(symbol, start_time, end_time)
         print(f"\n📥 Téléchargement des bougies {symbol} : {start_time} → {end_time}")
         print(f"📁 Fichier de sauvegarde : {filename}")
 
@@ -73,7 +79,6 @@ class BinanceCandleDownloaderPublic:
                 print("⚠️ Prochaine bougie identique ou antérieure. Stop.")
                 break
 
-            # Mise à jour progression
             downloaded_minutes = int((next_time - start_time).total_seconds() / 60)
             percent = min(100, int((downloaded_minutes / total_minutes) * 100))
             print(f"   ➤ {symbol} : {percent:3d}% | Bougies: {len(all_candles)} | Jusqu'à: {next_time}", end="\r")
@@ -89,12 +94,10 @@ class BinanceCandleDownloaderPublic:
         else:
             print(f"⚠️ Aucune donnée à enregistrer pour {symbol}")
 
-# === Exemple d'utilisation ===
 
+# === Exemple d'utilisation ===
 if __name__ == "__main__":
 
-    #"BTCUSDC", "ETHUSDC", "BNBUSDC", "XRPUSDC", "ADAUSDC", "DOGEUSDC","SOLUSDC", "DOTUSDC","LTCUSDC",
-    # Paramètres
     symbols = [
         "LINKUSDC", "BCHUSDC", "ALGOUSDC", "ATOMUSDC", "VETUSDC", "TRXUSDC", "XLMUSDC",
         "EGLDUSDC", "FILUSDC", "AVAXUSDC", "MATICUSDC", "UNIUSDC", "FTMUSDC", "HBARUSDC", "ICPUSDC",
@@ -110,12 +113,9 @@ if __name__ == "__main__":
         "KDAUSDC", "BAKEUSDC", "FLMUSDC", "BELUSDC", "CTKUSDC", "TOMOUSDC", "SUNUSDC", "NMRUSDC"
     ]
 
-    symbols = ["SHIBUSDC","FARTUSDC"]
-
     interval = "1m"
     save_dir = "raw"
 
-    # Période à télécharger
     start_time = datetime(2025, 1, 1, 1, 1)
     end_time   = datetime(2025, 7, 24, 1, 1)
 

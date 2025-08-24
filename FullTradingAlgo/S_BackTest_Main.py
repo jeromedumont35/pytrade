@@ -50,7 +50,7 @@ symbols = [
 list_data = load_symbol_data(symbols)
 
 # Lancement de l'algo
-algo.run(list_data)
+algo.run(list_data,execution=False)
 
 evaluator.print_summary()
 evaluator.plot_combined()

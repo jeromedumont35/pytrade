@@ -30,7 +30,7 @@ class CTradingAlgo:
         else:
             raise ValueError(f"Stratégie inconnue : {self.strategy_name}")
 
-    def run(self, list_data: list):
+    def run(self, list_data: list, execution):
         merged = []
         for df, symbol in list_data:
             df = df.copy()
@@ -45,14 +45,27 @@ class CTradingAlgo:
         grouped = full_df.groupby(full_df.index)
         total_ticks = len(grouped)
 
-        for timestamp, group in tqdm(grouped, total=total_ticks, desc="🔄 Simulation trading"):
+        # Initialisation de blocked
+        blocked = execution  # si exec=False -> blocked=False, si exec=True -> blocked=True
+
+        for i, (timestamp, group) in enumerate(
+                tqdm(grouped, total=total_ticks, desc="🔄 Simulation trading")
+        ):
+            # Si on est sur la dernière minute et que exec=True, on débloque
+            if execution and i == total_ticks - 1:
+                blocked = False
+
             for _, row in group.iterrows():
                 symbol = row["symbol"]
                 df = self.symbol_dfs[symbol]
                 if timestamp not in df.index:
                     continue
 
-                actions = self.strategy.apply(df, symbol, row, timestamp, self.open_positions)
+                actions = self.strategy.apply(df, symbol, row, timestamp, self.open_positions, blocked)
+
+                if blocked:
+                    continue
+
                 for action in actions:
                     if action["action"] == "OPEN":
                         self._open_position(
@@ -79,14 +92,14 @@ class CTradingAlgo:
                         df.loc[timestamp, "exit_price_*_r_P1"] = action["exit_price"]
 
                     elif action["action"] == "M1":
-                        # On écrit dans la colonne entry_price
                         df.loc[timestamp, "entry_price_^_g_P1"] = action["price"]
+
                     elif action["action"] == "M2":
-                        # On écrit dans la colonne entry_price
                         df.loc[timestamp, "entry_price_v_g_P1"] = action["price"]
 
         # Sauvegarde des df par pièce
-        self._save_results()
+        if not execution:
+            self._save_results()
 
     def _open_position(self, symbol, price, sl, timestamp, side, usdc):
         self.open_positions.append({
