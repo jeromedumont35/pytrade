@@ -1,3 +1,4 @@
 /FullTradingAlgo/panda/*.panda
+/FullTradingAlgo/panda_results/*.panda
 /FullTradingAlgo/raw/*.raw
 /FullTradingAlgo/raw/masked/*.raw

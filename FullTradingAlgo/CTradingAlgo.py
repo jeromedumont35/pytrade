@@ -141,3 +141,12 @@ class CTradingAlgo:
             path = f"./panda_results/{symbol}.panda"
             df.to_pickle(path)
             print(f"✅ Sauvegarde effectuée : {path}")
+
+    def get_symbol_states(self):
+        """
+        Retourne l'état courant de chaque symbole en déléguant à la stratégie configurée.
+        """
+        if hasattr(self.strategy, "get_symbol_states"):
+            return self.strategy.get_symbol_states()
+        else:
+            raise AttributeError(f"La stratégie {self.strategy_name} ne fournit pas de get_symbol_states()")

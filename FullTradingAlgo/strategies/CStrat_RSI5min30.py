@@ -266,20 +266,21 @@ class CStrat_RSI5min30:
         # 🔹 Renommage colonnes pour la stratégie
         df = df.rename(columns={
             "rsi_4h_14": "rsi_4h_14_P2",
-            "rsi_5m_14": "rsi_5m_14_P2",
-            "close": "close__b_P1"
+            "rsi_5m_14": "rsi_5m_14_P2"
         })
-
-        # 🔹 Affichage des RSI pour la dernière bougie
-        rsi_cols = [col for col in df.columns if col.startswith("rsi")]
-        print("\n[TRACE] Dernière bougie - valeurs RSI :")
-        print(df[rsi_cols].tail(1))
+        df["close__b_P1"] = df["close"]
 
         return df
 
     def run(self):
         self.transformer.process_all(self.apply_indicators)
 
+    def get_symbol_states(self):
+        """
+        Retourne un dictionnaire {symbole: état courant}.
+        Exemple : {"SHIBUSDC": "WAIT_RSI5M_LOW", "SOLUSDC": "TRADE_OPEN"}
+        """
+        return {sym: st["state"].name for sym, st in self.state.items()}
 
 if __name__ == "__main__":
     strat = CStrat_RSI5min30()

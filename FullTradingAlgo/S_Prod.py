@@ -5,6 +5,34 @@ import CTradingAlgo
 import pandas as pd
 from strategies.CStrat_RSI5min30 import CStrat_RSI5min30
 
+def display_last_indicators_with_state(symbol_dfs: dict, original_cols: list, algo: CTradingAlgo):
+    """
+    Affiche un tableau des dernières valeurs d'indicateurs pour chaque symbole,
+    avec la colonne 'State' après le symbole.
+    Ne montre que les colonnes qui contiennent au moins une valeur non-NaN.
+    """
+    # Récupère l'état courant de chaque symbole depuis la stratégie
+    states = algo.get_symbol_states()
+
+    rows = []
+    for sym, df in symbol_dfs.items():
+        last_row = df.tail(1)
+        # Colonnes ajoutées par apply_indicators
+        new_cols = [c for c in df.columns if c not in original_cols]
+
+        # Ne garder que les colonnes avec au moins une valeur non-NaN
+        filtered_cols = [col for col in new_cols if not last_row[col].isna().all()]
+
+        row_data = {"Symbol": sym, "State": states.get(sym, "UNKNOWN")}
+        for col in filtered_cols:
+            row_data[col] = last_row.iloc[0][col]
+        rows.append(row_data)
+
+    df_display = pd.DataFrame(rows)
+    print("\n📊 Dernière bougie avec indicateurs appliqués et état :")
+    print(df_display.to_string(index=False))
+
+
 
 def align_df_to_new(df_sym: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
     """
@@ -17,7 +45,7 @@ def align_df_to_new(df_sym: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
 # === PARAMÈTRES ===
 symbols = ["SHIBUSDC", "SOLUSDC"]
 interval = "1m"
-days = 10
+days = 5
 
 # === INITIALISATION ===
 fetcher = CBinanceDataFetcher.BinanceDataFetcher()
@@ -48,7 +76,7 @@ while True:
 
     if now.second == 0:
         print(f"\n⏰ Nouvelle minute détectée : {now}")
-        time.sleep(10)  # Laisser Binance publier la bougie
+        time.sleep(5)  # Laisser Binance publier la bougie
 
         # Récupération dernière bougie complète
         df_last = fetcher.get_last_complete_kline(symbols, interval=interval)
@@ -86,10 +114,6 @@ while True:
                         missing_row.index = [missing_time]
                         df_sym = pd.concat([df_sym, missing_row])
 
-            # Glisser la fenêtre (enlever la plus vieille, ajouter la nouvelle)
-            print("Dernier index df_sym:", df_sym.index[-1])
-            print("Index df_new:", df_new.index)
-
             # print("\n=== DEBUG DATES ===")
             # print(f"Symbole: {sym}")
             # print("Index df_sym avant concat:")
@@ -110,6 +134,7 @@ while True:
             # df_sym = df_sym.sort_index()
 
             # Réappliquer les indicateurs sur tout df_sym
+            original_cols = df_sym.columns.tolist()
             df_sym = algo.strategy.apply_indicators(df_sym, is_btc_file=(sym == "BTCUSDC"))
 
             # Mise à jour mémoire
@@ -119,11 +144,10 @@ while True:
             df_last_with_ind = df_sym.tail(1)
             list_data_last.append((df_last_with_ind, sym))
 
-            # Affichage pour vérifier
-            print(f"🔹 {sym}: dernière Binance = {df_new.index[-1]}, dernière DF = {df_last_with_ind.index[-1]}")
-
         # Exécution algo uniquement sur la dernière bougie
         algo.run(list_data_last, execution=True)
+
+        display_last_indicators_with_state(symbol_dfs, original_cols,algo)
 
         time.sleep(1)
 
