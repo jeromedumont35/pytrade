@@ -156,9 +156,9 @@ class CStrat_WDetector:
         if not isinstance(df.index, pd.DatetimeIndex):
             raise ValueError("Le DataFrame doit avoir un index temporel (datetime).")
 
-        df = CRSICalculator.RSICalculator(df, period=14,
-                                          close_times=[(3, 59), (7, 59), (11, 59), (15, 59), (19, 59), (23, 59)],
-                                          name="rsi_4h_14").get_df()
+        df = CRSICalculator.CRSICalculator(df, period=14,
+                                           close_times=[(3, 59), (7, 59), (11, 59), (15, 59), (19, 59), (23, 59)],
+                                           name="rsi_4h_14").get_df()
         df = df.drop(columns=[col for col in df.columns if col.startswith("avg_")])
 
         if not is_btc_file:

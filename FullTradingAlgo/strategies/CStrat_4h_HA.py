@@ -87,12 +87,12 @@ class CStrat_4h_HA:
         if not isinstance(df.index, pd.DatetimeIndex):
             raise ValueError("Le DataFrame doit avoir un index temporel (datetime).")
 
-        df = CRSICalculator.RSICalculator(df, period=14,
-                                          close_times=[(3, 59), (7, 59), (11, 59), (15, 59), (19, 59), (23, 59)],
-                                          name="rsi_4h_14").get_df()
+        df = CRSICalculator.CRSICalculator(df, period=14,
+                                           close_times=[(3, 59), (7, 59), (11, 59), (15, 59), (19, 59), (23, 59)],
+                                           name="rsi_4h_14").get_df()
 
         close_times_1h = [(h, 59) for h in range(24)]
-        df = CRSICalculator.RSICalculator(df, period=14, close_times=close_times_1h, name="rsi_1h_14").get_df()
+        df = CRSICalculator.CRSICalculator(df, period=14, close_times=close_times_1h, name="rsi_1h_14").get_df()
         df = df.drop(columns=[col for col in df.columns if "avg_" in col])
 
         window = 240  # 4h = 240 minutes

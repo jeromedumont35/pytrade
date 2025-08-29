@@ -1,6 +1,6 @@
 import pandas as pd
 
-class RSICalculator:
+class CRSICalculator:
     def __init__(self, df, period=14, close_times=[(3, 59), (7, 59), (11, 59), (15, 59), (19, 59), (23, 59)], name="rsi"):
         self.df = df.copy()
         self.period = period

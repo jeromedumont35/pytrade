@@ -8,6 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../indi
 
 import CRSICalculator
 import CTransformToPanda
+import CPeaksDetector
 import CIndicatorsBTCAdder
 
 
@@ -251,7 +252,7 @@ class CStrat_RSI5min30:
         df = df.drop(columns=rsi_cols_to_remove, errors=True)
 
         # RSI 4h
-        df = CRSICalculator.RSICalculator(
+        df = CRSICalculator.CRSICalculator(
             df, period=14,
             close_times=[(h, m) for h in range(0, 24, 4) for m in [0]],
             name="rsi_4h_14"
@@ -259,9 +260,12 @@ class CStrat_RSI5min30:
 
         # RSI 5m
         close_times_5m = [(h, m) for h in range(24) for m in range(0, 60, 5)]
-        df = CRSICalculator.RSICalculator(
+        df = CRSICalculator.CRSICalculator(
             df, period=14, close_times=close_times_5m, name="rsi_5m_14"
         ).get_df()
+
+        # df = CPeaksDetector.CPeaksDetector(df, atr_period=1000, factor=0.7, distance=30,
+        #          max_col="peak_max_v_m_P1", min_col="peak_min_^_y_P1").get_df()
 
         # 🔹 Renommage colonnes pour la stratégie
         df = df.rename(columns={
